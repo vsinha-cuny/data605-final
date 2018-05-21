@@ -388,7 +388,7 @@ df.train = df.train %>% dplyr::select(SalePrice,
                                       CentralAir,
                                       GarageArea,
                                       GarageCars,
-                                      Exterior1st,
+                                      # Exterior1st,
                                       ExterQual,
                                       Fence,
                                       Fireplaces,
@@ -442,4 +442,48 @@ df.train = df.train %>% dplyr::select(-RoofStyle, -Foundation, -BsmtCond, -MiscV
 regr = lm(df.train)
 check_model(regr)
 qqnorm(residuals(regr))
+```
+
+Perform predictions using the test.csv file and create Kaggle submission csv file.
+
+```{r}
+df.test = read.csv("test.csv")
+
+df.test = df.test %>% dplyr::select(BldgType,
+                                    # BsmtCond,
+                                    BsmtExposure,
+                                    BsmtQual,
+                                    CentralAir,
+                                    GarageArea,
+                                    GarageCars,
+                                    Exterior1st,
+                                    ExterQual,
+                                    # Fence,
+                                    Fireplaces,
+                                    # FireplaceQu,
+                                    # Foundation,
+                                    HouseStyle,
+                                    KitchenQual,
+                                    LandContour,
+                                    LandSlope,
+                                    LotArea,
+                                    MasVnrArea,
+                                    # MiscVal,
+                                    Neighborhood,
+                                    OverallCond,
+                                    OverallQual,
+                                    PoolArea,
+                                    # # PoolQC,
+                                    # RoofStyle,
+                                    # # Street,
+                                    YearBuilt,
+                                    YearRemodAdd)
+
+predictions = predict(regr, df.test)
+Ids = seq(1, length(predictions), by = 1)
+
+pred.df = data.frame(Ids, as.numeric(predictions))
+colnames(pred.df) = c("Id", "SalePrice")
+write.csv(pred.df, file="submission.csv", row.names=F)
+
 ```
