@@ -449,7 +449,8 @@ Perform predictions using the test.csv file and create Kaggle submission csv fil
 ```{r}
 df.test = read.csv("test.csv")
 
-df.test = df.test %>% dplyr::select(BldgType,
+df.test = df.test %>% dplyr::select(Id,
+                                    BldgType,
                                     # BsmtCond,
                                     BsmtExposure,
                                     BsmtQual,
@@ -479,11 +480,14 @@ df.test = df.test %>% dplyr::select(BldgType,
                                     YearBuilt,
                                     YearRemodAdd)
 
-predictions = predict(regr, df.test)
-Ids = seq(1, length(predictions), by = 1)
+#regr2 = update(regr, na.action=na.exclude)
+predictions = predict(regr, df.test %>% dplyr::select(-Id))
 
-pred.df = data.frame(Ids, as.numeric(predictions))
+predictions[is.na(predictions)] = mean(predictions, na.rm=T)
+
+pred.df = data.frame(df.test$Id, as.numeric(predictions))
 colnames(pred.df) = c("Id", "SalePrice")
+
 write.csv(pred.df, file="submission.csv", row.names=F)
 
 ```
