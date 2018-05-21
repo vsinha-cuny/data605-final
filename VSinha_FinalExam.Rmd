@@ -61,7 +61,7 @@ hist(df$SalePrice, main = "SalePrice")
 
 ```
 
-### Probability. {.tabset}
+### Probability.
 
 >Calculate as a minimum the below probabilities a through c. Assume the small letter
 >"x" is estimated as the 1st quartile of the X variable, and the small letter "y" is
@@ -174,7 +174,7 @@ print(ptest)
 The p-value indicates the two variables are statistically dependent.
 
 
-### Descriptive and Inferential Statistics. {.tabset}
+### Descriptive and Inferential Statistics.
 
 
 >Provide univariate descriptive statistics and appropriate plots for the training
@@ -235,7 +235,7 @@ The 3 variables exhibit weak correlation as evidenced by their correlation matri
 Therefore there is less chance of familywise error.
 
 
-### Linear Algebra and Correlation. {.tabset}
+### Linear Algebra and Correlation.
 
 >Invert your 3 x 3 correlation matrix from above. (This is known as the precision
 >matrix and contains variance inflation factors on the diagonal.)
@@ -271,7 +271,7 @@ el = expand(l)
 print(el)
 ```
 
-### Calculus-Based Probability & Statistics. {.tabset}
+### Calculus-Based Probability & Statistics.
 
 >Many times, it makes sense to fit a closed form distribution to data. For the first
 >variable that you selected which is skewed to the right, shift it so that the minimum
@@ -358,7 +358,7 @@ The difference in the empirical data and the exponential fit for LotArea indicat
 that LotArea follows an exponential distribution does not fit the observed data very well.
 
 
-### Modeling. {.tabset}
+### Modeling.
 
 >Build some type of multiple regression model and submit your model to the competition
 >board. Provide your complete model summary and results with analysis. Report your
