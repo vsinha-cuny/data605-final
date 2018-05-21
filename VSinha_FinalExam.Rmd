@@ -1,0 +1,445 @@
+---
+title: "Data605 Final Exam"
+author: "Vikas Sinha"
+date: "May 18, 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```
+House Prices: Advanced Regression Techniques competition.
+https://www.kaggle.com/c/house-prices-advanced-regression-techniques.
+```
+
+```{r warning=F, message=F}
+library(dplyr)
+library(knitr)
+library(tidyr)
+library(moments)
+library(psych)
+library(Matrix)
+
+
+# Assume file train.csv has been locally downloaded.
+
+df = read.csv("train.csv")
+dim(df)
+
+```
+
+>* Pick one of the quantitative independent variables from the training data set
+>(train.csv), and define that variable as X.  Make sure this variable is skewed
+>to the right!
+
+>* Pick the dependent variable and define it as Y.
+
+
+```{r}
+
+# To pick an independent variable with right-skewness, we can examine histograms
+# of a few variables.
+par(mfrow=c(1,2))
+# Overall Quality
+hist(df$OverallQual, main = "OverallQual")
+
+# Lot Area
+hist(df$LotArea, main = "LotArea")
+
+
+# LotArea is clearly right-skewed.
+X = df$LotArea
+
+# The target variable we are trying to predict is SalePrice, the
+# property's sale price in dollars.
+
+Y = df$SalePrice
+
+# Show histogram of SalePrice (target).
+# SalePrice
+hist(df$SalePrice, main = "SalePrice")
+
+```
+
+### Probability. {.tabset}
+
+>Calculate as a minimum the below probabilities a through c. Assume the small letter
+>"x" is estimated as the 1st quartile of the X variable, and the small letter "y" is
+>estimated as the 1st quartile of the Y variable. Interpret the meaning of all
+>probabilities. In addition, make a table of counts as shown below.
+
+>* a. P(X > x | Y > y)
+>* b. P(X > x, Y > y)
+>* c. P(X < x | Y > y)
+
+
+
+```{r}
+# Print summaries of X (independent var.) and Y (target).
+
+d2 = df %>% dplyr::select(LotArea, SalePrice)
+summary(d2)
+
+x_1q = summary(X)["1st Qu."]
+y_1q = summary(Y)["1st Qu."]
+
+cat("Lot_Area.1st_Quartile = ", x_1q, "; Sale_Price.1st_Quartile = ", y_1q, "\n")
+
+# Count the number of observations above the 1st quartile for X and Y.
+
+cat("Number of observations above the 1st quartile for X =", sum(X > x_1q), "\n")
+cat("Number of observations above the 1st quartile for Y =", sum(Y > y_1q), "\n")
+
+
+# Now calculate the required probabilities.
+
+X1 = X > x_1q
+Y1 = Y > y_1q
+
+# a. P(X>x | Y>y)
+d = sum(Y1)             # denominator, instances where Y>y
+n = sum(X[Y1] > x_1q)   # numerator
+p1 = n/d
+
+cat("P(X>x | Y>y) =", n, "/", d, "=", p1, "\n")
+
+
+# b. P(X>x, Y>y)
+d = length(Y)                       # denominator
+n = sum((X > x_1q) & (Y > y_1q))    # numerator
+p2 = n/d
+
+cat("P(X>x, Y>y) =", n, "/", d, "=", p2, "\n")
+
+
+# c. P(X<x | Y>y)
+d = sum(Y1)           # denominator
+n = sum(X[Y1] < x_1q)  # numerator
+p3 = n/d
+
+cat("P(X<x | Y>y) =", n, "/", d, "=", p3, "\n")
+
+```
+
+
+
+ x/y            | <= 1st quartile | > 1st quartile | total     |
+----------------|-----------------|----------------|-----------|
+ <= 1st quartile| 365/376         |   1095/376     | 1460/752  |
+ > 1st quartile | 365/1084        |   1095/1084    | 1460/2168 |
+ total          | 730/1460        |   2190/1460    | 2920/2920 |
+
+
+
+>Does splitting the training data in this fashion make them independent?
+
+No, it does not. As shown in the next section, we find that 
+$P\left(AB\right) \neq P\left(A\right)P\left(B\right)$
+
+>Let A be the new variable counting those observations above the 1st quartile
+>for X, and let B be the new variable counting those observations above the 1st
+>quartile for Y. Does P(AB)=P(A)P(B)? Check mathematically, and then evaluate
+>by running a Chi Square test for association.
+
+
+```{r}
+A = X > x_1q
+B = Y > y_1q
+
+# Calculate P(AB)
+P_AB = sum(A[B])
+cat("P(AB) = ", P_AB/length(Y), "\n")
+
+# Calculate P(A) * P(B)
+P_A = sum(A)/length(Y)
+P_B = sum(B)/length(Y)
+cat("P(A)P(B) = ", P_A*P_B, "\n")
+
+```
+
+The above shows that $P\left(AB\right) \neq P\left(A\right)P\left(B\right)$, i.e.
+that A and B are not independent.
+
+
+Running a Chi-Square test on A, B for association:
+
+
+```{r}
+d2 = df %>% dplyr::select(LotArea, SalePrice)
+ptest = chisq.test(table(d2))
+print(ptest)
+
+```
+
+The p-value indicates the two variables are statistically dependent.
+
+
+### Descriptive and Inferential Statistics. {.tabset}
+
+
+>Provide univariate descriptive statistics and appropriate plots for the training
+>data set. Provide a scatterplot of X and Y.
+
+
+```{r}
+summary(d2)
+plot(d2, type="p", main="Scatter Plot: Sale Price vs. Lot Area",
+     xlab="Lot Area (sq ft)", ylab="Sale Price")
+skewness(X)
+skewness(Y)
+
+kurtosis(X)
+kurtosis(Y)
+
+
+```
+
+The skewness of X (Lot Area variable) is 12.20 indicating that it is extremely
+skewed to the right.
+
+The skewness of Y (Sale Price, target variable) is 1.88 indicating that it is highly
+skewed to the right.
+
+The kurtosis of X and Y are 205.5 and 9.5 respectively, implying that both
+X and Y are leptokurtic.
+
+
+
+>Derive a correlation matrix for any THREE quantitative variables in the dataset.
+>Test the hypotheses that the correlations between each pairwise set of variables
+>is 0 and provide a 92% confidence interval. Discuss the meaning of your analysis.
+
+
+The following 3 variables are selected for correlation testing.
+```
+WoodDeckSF: Wood deck area in square feet
+OpenPorchSF: Open porch area in square feet
+1stFlrSF: First Floor square feet
+```
+
+```{r}
+
+df3 = df %>% dplyr::select(WoodDeckSF, OpenPorchSF, X1stFlrSF)
+
+corr.mat = cor(df3)
+
+# Print Correlation matrix and Correlation hypothesis
+# test for 92% conf. interval.
+corr.test(df3, alpha=0.08)
+```
+
+
+>Would you be worried about familywise error? Why or why not?
+
+The 3 variables exhibit weak correlation as evidenced by their correlation matrix.
+Therefore there is less chance of familywise error.
+
+
+### Linear Algebra and Correlation. {.tabset}
+
+>Invert your 3 x 3 correlation matrix from above. (This is known as the precision
+>matrix and contains variance inflation factors on the diagonal.)
+
+```{r}
+corr.mat = cor(df3)
+precision.mat = solve(corr.mat)
+print(precision.mat)
+```
+
+
+>Multiply the correlation matrix by the precision matrix, and then multiply the
+>precision matrix by the correlation matrix. Conduct LU decomposition on the matrix.
+
+```{r}
+product.1 = corr.mat %*% precision.mat
+# print rounded to 12 significant digits
+print(round(product.1, 12))
+
+product.2 = precision.mat %*% corr.mat
+# print rounded to 12 significant digits
+print(round(product.2, 12))
+```
+
+The two matrices are numerically equal within a reasonable level of
+precision that would be used. They are both equal to the identity matrix $I_3$.
+
+LU Decomposition:
+
+```{r}
+l = lu(precision.mat)
+el = expand(l)
+print(el)
+```
+
+### Calculus-Based Probability & Statistics. {.tabset}
+
+>Many times, it makes sense to fit a closed form distribution to data. For the first
+>variable that you selected which is skewed to the right, shift it so that the minimum
+>value is above zero as necessary.
+
+```{r}
+skewness(X)
+summary(X)
+
+```
+
+The minimum value of X is 1300 and so we already have $X \geq 0$.
+
+
+>Then load the MASS package and run *fitdistr()* to fit an exponential probability density
+>function.
+>(See https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/fitdistr.html).
+
+
+```{r warning=F, message=F}
+library(MASS)
+exp_params = fitdistr(X, "exponential")
+print(exp_params)
+lambda = as.double(exp_params$estimate)
+print(lambda)
+```
+
+
+>Find the optimal value of $\lambda$ for this distribution, and then take 1000 samples
+>from this exponential distribution using this value (e.g., rexp(1000, $\lambda$)).
+
+
+```{r}
+exponential.dist = rexp(1000, lambda)
+
+```
+
+
+>Plot a histogram and compare it with a histogram of your original variable. Using
+>the exponential pdf, find the $5^{th}$ and $95^{th}$ percentiles using the
+>cumulative distribution function (CDF). Also generate a 95% confidence interval
+>from the empirical data, assuming normality.
+
+
+```{r}
+# Compare the two histograms side-by-side.
+par(mfrow=c(1, 2))
+hist(X, main="X (Lot Area)")
+hist(exponential.dist, main="Exponential Distr for X")
+```
+
+
+>Using the exponential pdf, find the $5^{th}$ and $95^{th}$ percentiles using the
+>cumulative distribution function (CDF). Also generate a 95% confidence interval
+>from the empirical data, assuming normality.
+
+```{r}
+quantile(exponential.dist, probs=c(0.05, 0.95))
+
+# Generate 95% C.I. for the empirical data:
+
+xsd = sd(X)
+xmean = mean(X)
+n = length(X)
+
+err = qnorm(0.975)*xsd/sqrt(n)
+left = xmean - err
+right = xmean + err
+
+cat("A 95% confidence interval for Lot Area is [", left, ",", right, "]") 
+```
+
+
+>Finally, provide the empirical $5^{th}$ percentile and $95^{th}$ percentile of
+>the data. Discuss.
+
+
+```{r}
+quantile(X, probs=c(0.05, 0.95))
+```
+
+
+The difference in the empirical data and the exponential fit for LotArea indicates that the assumption
+that LotArea follows an exponential distribution does not fit the observed data very well.
+
+
+### Modeling. {.tabset}
+
+>Build some type of multiple regression model and submit your model to the competition
+>board. Provide your complete model summary and results with analysis. Report your
+>Kaggle.com user name and score.
+
+
+```{r}
+
+check_model <- function(m) {
+    print(summary(m))
+    res = residuals(m)
+    print(summary(res))
+    hist(res)
+    plot(fitted(m), resid(m))
+}
+par(mfrow = c(1, 1))
+
+# Full training data set
+df.train = df
+
+# Reduce to Dataframe with selected feature sets
+df.train = df.train %>% dplyr::select(SalePrice,
+                                      BldgType,
+                                      BsmtCond,
+                                      BsmtExposure,
+                                      BsmtQual,
+                                      CentralAir,
+                                      GarageArea,
+                                      GarageCars,
+                                      Exterior1st,
+                                      ExterQual,
+                                      Fence,
+                                      Fireplaces,
+                                      FireplaceQu,
+                                      Foundation,
+                                      HouseStyle,
+                                      KitchenQual,
+                                      LandContour,
+                                      LandSlope,
+                                      LotArea,
+                                      MasVnrArea,
+                                      MiscVal,
+                                      Neighborhood,
+                                      OverallCond,
+                                      OverallQual,
+                                      PoolArea,
+                                      # # PoolQC,
+                                      RoofStyle,
+                                      # # Street,
+                                      YearBuilt,
+                                      YearRemodAdd)
+regr = lm(df.train)
+check_model(regr)
+qqnorm(residuals(regr))
+
+summary(df.train)
+```
+
+
+From the above we see that the Adjusted R-squared value is high, but the degrees of freedom is low (49).
+This is due to the fact that a number of observations have been dropped. From the summary of the dataframe,
+we see that the fields "Fence" and "FireplaceQu" have a high number of NAs. Therefore we exclude them
+from the model.
+
+```{r}
+df.train = df.train %>% dplyr::select(-Fence, -FireplaceQu)
+regr = lm(df.train)
+check_model(regr)
+qqnorm(residuals(regr))
+```
+
+
+As a result the Adjusted R-squared value is now lower but the degrees of freedom is higher. This is preferable
+because it allows us to use more of the training observations.
+
+Next, we can remove a number of variables that remain in the model and that have high p-values.
+
+
+```{r}
+df.train = df.train %>% dplyr::select(-RoofStyle, -Foundation, -BsmtCond, -MiscVal)
+regr = lm(df.train)
+check_model(regr)
+qqnorm(residuals(regr))
+```
